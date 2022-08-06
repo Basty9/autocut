@@ -1,6 +1,9 @@
+from bz2 import compress
 import os
 import argparse
+from posixpath import splitext
 import subprocess
+from time import sleep
 import click
 import datetime
 import tempfile
@@ -17,6 +20,7 @@ parser.add_argument("--output-file", help="the path to the output video (default
 parser.add_argument("--silent-speed", default=5, type=int, help="how much silent parts should be sped up (default: 5)")
 parser.add_argument("--silent-threshold", default=400, type=int, help="the threshold of what should be considered silent (default: 400)")
 parser.add_argument("--show-ffmpeg-output", action="store_true", help="if given, shows ffmpeg output (which is hidden by default)")
+parser.add_argument("--compress", action="store_true", help="if given, shows ffmpeg output (which is hidden by default)")
 args = parser.parse_args()
 
 # Set stdout, stderr for ffmpeg calls and end for any prints before calling ffmpeg
@@ -45,7 +49,7 @@ audio_file = next(tempfile._get_candidate_names()) + ".wav"
 
 # Extract audio
 print("Extracting audio... ", end=end)
-subprocess.call("ffmpeg -i \"{}\" -ab 160k -ac 2 -ar 44100 -vn {}".format(args.input_file, original_audio_file), 
+subprocess.call("ffmpeg -i \"{}\" -ab 320k -ac 2 -ar 44800 -vn {}".format(args.input_file, original_audio_file), 
     shell=True, 
     stdout=stdout,
     stderr=stderr)
@@ -144,7 +148,7 @@ video_output.release()
 
 if args.output_file == None:
     name, ext = os.path.splitext(args.input_file)
-    out_file = "{}_faster{}".format(name, ext)
+    out_file = "{}.auto{}".format(name, ext)
 else:
     out_file = args.output_file
 
@@ -171,3 +175,16 @@ print("The output file is available at {}".format(out_file))
 old_duration = str(datetime.timedelta(seconds=int(video_length/fps)))
 new_duration = str(datetime.timedelta(seconds=int(VideoFileClip(out_file).duration)))
 print("Old duration: {}, new duration: {}".format(old_duration, new_duration))
+
+
+sleep(4)
+if args.compress == True:
+    
+    compr_name, compr_ext = splitext(out_file)
+    print("compressing output file... ")
+    subprocess.call("ffmpeg -i {} -c:v libx264 -crf 18 -preset veryslow {}.compressed{}".format(out_file,compr_name,compr_ext),
+    shell=True, 
+    stdout=stdout,
+    stderr=stderr)
+    os.remove(out_file)
+    print("compressing done!")
